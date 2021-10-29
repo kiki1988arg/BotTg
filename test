@@ -1,0 +1,143 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# This program is dedicated to the public domain under the CC0 license.
+
+import logging
+import schedule
+import time
+import requests
+
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+
+import socket
+
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+HOST = 'irc.chathispano.com'  # irc server
+PORT = 6667  # port
+
+print('soc created |', s)
+remote_ip = socket.gethostbyname(HOST)
+print('ip of irc server is:', remote_ip)
+
+s.connect((HOST, PORT))
+
+print('connected to: ', HOST, PORT)
+
+s.send(":0 CONTROL SESSION fobia-social \r\n ".encode())
+s.send(":1 \r\n ".encode())
+s.send(":1 HOST irc.chathispano.com667 \r\n ".encode())
+s.send(":1 ENCODING utf8 \r\n ".encode())
+s.send(":1 CAP LS 302 \r\n ".encode())
+s.send(":1 NICK TimeToFlyyy\r\n".encode())
+s.send(":1 USER TimeToFly 0 * https://kiwiirc.com/ \r\n ".encode())
+s.send(":1 CAP REQ way-notify batch cap-notify extended-join message-tags server-time \r\n ".encode())
+s.send(":1 CAP END \r\n ".encode())
+s.send(":1 WHO TimeToFly \r\n ".encode())
+
+
+# Enable logging
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    level=logging.INFO)
+
+logger = logging.getLogger(__name__)
+
+
+# Define a few command handlers. These usually take the two arguments update and
+# context. Error handlers also receive the raised TelegramError object in error.
+def start(update, context):
+    """Send a message when the command /start is issued."""
+    update.message.reply_text('Hi!')
+
+
+def help(update, context):
+    """Send a message when the command /help is issued."""
+    update.message.reply_text('Help!')
+
+
+def echo(update, context):
+    """Echo the user message."""
+    if(update.message.chat.type == 'private'):
+        if(update.message.text):
+            update.message.bot.sendMessage(-1001553558065,
+                                           f"{update.message.text}")
+            # update.message.bot.sendMessage(-1001595834625, f"{update.message.text}")
+
+            # update.message.bot.sendMessage(-1001686418274, update.message.text)
+
+        if(update.message.voice):
+            update.message.bot.sendVoice(-1001553558065, update.message.voice)
+            # update.message.bot.sendVoice(-1001595834625, update.message.voice)
+            # update.message.bot.sendVoice(-1001686418274, update.message.voice)
+        if(update.message.poll):
+            update.message.bot.sendPoll(-1001553558065, update.message.poll.question, [
+                                        o.text for o in update.message.poll.options], update.message.poll.is_anonymous, 'regular', update.message.poll.allows_multiple_answers)
+
+
+def error(update, context):
+    """Log Errors caused by Updates."""
+    logger.warning('Update "%s" caused error "%s"', update, context.error)
+
+
+def new_member(update, context):
+    update.message.reply_audio(
+        'https://cdn.sndup.net/78d5/welcome.ogg?token=WnCr9PK5DGFSzt7YCWok_oB6Tyg8uxN-kJzo3WMZY8o&token_path=%2F78d5%2F&expires=1635207786')
+
+
+def job():
+    requests.get("https://api.telegram.org/botKEY DEL BOT/sendMessage?chat_id=-1001553558065&text=Puto el que lee")
+
+
+def main():
+    """Start the bot."""
+    # Create the Updater and pass it your bot's token.
+    # Make sure to set use_context=True to use the new context based callbacks
+    # Post version 12 this will no longer be necessary
+    updater = Updater(
+        "KEY DEL BOT", use_context=True)
+
+    # Get the dispatcher to register handlers
+    dp = updater.dispatcher
+
+    # on different commands - answer in Telegram
+    dp.add_handler(CommandHandler("start", start))
+    dp.add_handler(CommandHandler("help", help))
+    dp.add_handler(MessageHandler(
+        Filters.status_update.new_chat_members, new_member))
+
+    # on noncommand i.e message - echo the message on Telegram
+    dp.add_handler(MessageHandler(Filters.all, echo))
+
+    # log all errors
+    dp.add_error_handler(error)
+
+    # Start the Bot
+    updater.start_polling()
+
+    # schedule.every(30).minutes.do(job)
+    # while True:
+    #     schedule.run_pending()
+    #     time.sleep(1)
+
+    while 1:
+        data = s.recv(4096).decode()
+        print(data)
+        if data.find('PING') != -1:
+            if(len(data.split(':'))>2):
+                s.send(str('PONG ' + data.split(':')[3] + '\r\n ').encode())
+            else:
+                s.send(str('PONG ' + data.split(':')[1] + '\r\n ').encode())
+
+            s.send(":1 JOIN #psicologia \r\n ".encode())
+            print('PONG sent \n')
+        if data.find('PRIVMSG #psicologia') != -1:
+            requests.get(f"https://api.telegram.org/botKEY DEL BOT/sendMessage?chat_id=-1001553558065&text={data.split(':')[1].split('!')[0]}: {data.split(':')[2]}")
+    s.close()
+
+
+    updater.idle()
+
+
+
+
+if __name__ == '__main__':
+    main()
